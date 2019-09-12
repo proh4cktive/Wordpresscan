@@ -32,6 +32,8 @@ python wordpresscan.py -u "http://localhost/wordpress" --update --random-agent
 --update : Update the wpscan database
 --aggressive : Launch an aggressive version to scan for plugins/themes
 --random-agent : Use a random user-agent for this session
+--follow: Auto-follow redirect without asking
+-- json [FILE]: output results to json file
 ```
 
 ### Example 2 : Basic bruteforce (option --brute, option --nocheck)
