@@ -12,23 +12,24 @@ from engine.brute import *
 
 if __name__ == "__main__":
 
-	print "_______________________________________________________________ "
-	print " _    _               _                                         "
-	print "| |  | |             | |                                        "
-	print "| |  | | ___  _ __ __| |_ __  _ __ ___  ___ ___  ___ __ _ _ __  "
-	print "| |/\| |/ _ \| '__/ _` | '_ \| '__/ _ \/ __/ __|/ __/ _` | '_ \ "
-	print "\  /\  / (_) | | | (_| | |_) | | |  __/\__ \__ \ (_| (_| | | | |"
-	print " \/  \/ \___/|_|  \__,_| .__/|_|  \___||___/___/\___\__,_|_| |_|"
-	print "                       | |                                      "
-	print "                       |_|                                      "
-	print " WordPress scanner based on wpscan work - @pentest_swissky      "
-	print "_______________________________________________________________ "
+	print("_______________________________________________________________ ")
+	print(" _    _               _                                         ")
+	print("| |  | |             | |                                        ")
+	print("| |  | | ___  _ __ __| |_ __  _ __ ___  ___ ___  ___ __ _ _ __  ")
+	print("| |/\| |/ _ \| '__/ _` | '_ \| '__/ _ \/ __/ __|/ __/ _` | '_ \ ")
+	print("\  /\  / (_) | | | (_| | |_) | | |  __/\__ \__ \ (_| (_| | | | |")
+	print(" \/  \/ \___/|_|  \__,_| .__/|_|  \___||___/___/\___\__,_|_| |_|")
+	print("                       | |                                      ")
+	print("                       |_|                                      ")
+	print(" WordPress scanner based on wpscan work - @pentest_swissky      ")
+	print("_______________________________________________________________ ")
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('-u', action ='store', dest='url', help="Wordpress URL")
 	parser.add_argument('--update', action ='store_const', const='update', dest='update', help="Update the database")
 	parser.add_argument('--aggressive', action ='store_const', const='aggressive', dest='aggressive', default=False, help="Aggressive scan for plugins/themes")
 	parser.add_argument('--fuzz', action ='store_const', const='fuzz', dest='fuzz', default=False, help="Fuzz the files")
+	parser.add_argument('--follow', action ='store_const', const='follow', dest='follow', default=False, help="Auto follow redirections")
 	parser.add_argument('--brute', action ='store_const', const='brute', dest='brute', default=False, help="Bruteforce users and passwords")
 	parser.add_argument('--nocheck', action ='store_const', const='nocheck',dest='nocheck', default=False, help="Check for a Wordpress instance")
 	parser.add_argument('--random-agent', action ='store_const', const='random_agent', dest='random_agent', default=False, help="Random User-Agent")
@@ -36,7 +37,9 @@ if __name__ == "__main__":
 	parser.add_argument('--usernames', action ='store', dest='usernames', default='', help="Usernames to bruteforce separated with a ','")
 	parser.add_argument('--users-list', action ='store', dest='users_list', default=None, help="Users list for bruteforce")
 	parser.add_argument('--passwords-list', action ='store', dest='passwords_list', default=None, help="Passwords list for bruteforce")
+	parser.add_argument('--json', action ='store', dest='json', default=False, help="Dump results to json file")
 	parser.add_argument('--debug', action ='store_const', const='debug', dest='debug', default=False, help="Enable a debugging flag")
+	parser.add_argument('--quiet', action ='store_const', const='quiet', dest='quiet', default=False, help="Disable output (use it with --json)")
 	results = parser.parse_args()
 
 	# Check wordpress url
@@ -50,7 +53,7 @@ if __name__ == "__main__":
 			database_update()
 
 		# Build a new wordpress object
-		wp = Wordpress(format_url(results.url), results.random_agent, results.nocheck, results.max_threads)
+		wp = Wordpress(format_url(results.url), results.random_agent, results.nocheck, results.max_threads, results.follow)
 
 		# Launch bruteforce
 		Brute_Engine(wp, results.brute, results.usernames, results.users_list, results.passwords_list)
@@ -67,6 +70,11 @@ if __name__ == "__main__":
 		# Debug
 		if results.debug:
 			wp.to_string()
+
+		# Json
+		if results.json:
+			with open(results.json, 'wt') as res:
+				res.write(wp.to_json())
 
 	else:
 		parser.print_help()

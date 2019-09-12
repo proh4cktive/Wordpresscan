@@ -62,15 +62,15 @@ description : download and update the database from wpscan website
 warning     : user-agents.txt and timthumbs.txt are zip files
 """
 def database_update():
-  print "\033[93mUpdating database\033[92m - Last update: \033[0m" + database_last_date('database/local_vulnerable_files.xml')
+  print("\033[93mUpdating database\033[92m - Last update: \033[0m" + database_last_date('database/local_vulnerable_files.xml'))
   update_url = "https://data.wpscan.org/"
   update_files = [ 'local_vulnerable_files.xml', 'local_vulnerable_files.xsd',
   'timthumbs.txt', 'user-agents.txt', 'wp_versions.xml', 'wp_versions.xsd',
   'wordpresses.json', 'plugins.json', 'themes.json']
 
   for f in update_files:
-    print "\t\033[93mDownloading \033[0m"+ f +" \033[92mFile updated !\033[0m"
-    download_raw_file(update_url+f, "database/"+f, True)
+    print("\t\033[93mDownloading \033[0m"+ f +" \033[92mFile updated !\033[0m")
+    download_file(update_url+f, "database/"+f, True)
 
   unzip_file("database/user-agents.txt")
   unzip_file("database/timthumbs.txt")
@@ -110,7 +110,7 @@ def download_raw_file(url, filename, verbosity):
           progress += len(buf)
 
           if verbosity == True:
-            print('\tDownloaded : %.2f Mo\r' % (float(progress)/(1024*1024))),
+            print(('\tDownloaded : %.2f Mo\r' % (float(progress)/(1024*1024))))
 
   except Exception as e:
     raise e
@@ -214,26 +214,40 @@ def display_vulnerable_component(name, version, file):
     with open('database/' + file + '.json') as data_file:
       data = json.load(data_file)
 
-    print warning("Name: %s - v%s" % (name, version))
-    if name in data.keys():
+    print(warning("Name: %s - v%s" % (name, version)))
+
+    component = dict({'name': name, 'version': version, 'CVE': list()})
+
+    if name in list(data.keys()):
 
       # Display the out of date info if the version is lower of the latest version
       if is_lower(version, data[name]['latest_version'], False):
-        print info("The version is out of date, the latest version is %s" % data[name]['latest_version'])
+        print(info("The version is out of date, the latest version is %s" % data[name]['latest_version']))
+        component['latest'] = data[name]['latest_version']
+
+      # Store vulnerabilities
+      component['vulns'] = data[name]['vulnerabilities']
 
       # Display the vulnerability if it's not patched version
       for vuln in data[name]['vulnerabilities']:
-        if 'fixed_in' in vuln.keys() and (vuln['fixed_in'] == None or is_lower(version, vuln['fixed_in'], True)):
+        if 'fixed_in' in list(vuln.keys()) and (vuln['fixed_in'] == None or is_lower(version, vuln['fixed_in'], True)):
 
           # Main informations
-          print "\t",vulnerable("%s : %s - ID:%s" % (vuln['vuln_type'], vuln['title'] , vuln['id']) )
-          print "\t",display("Fixed in %s"% vuln['fixed_in'])
+          print("\t",vulnerable("%s : %s - ID:%s" % (vuln['vuln_type'], vuln['title'] , vuln['id']) ))
+          print("\t",display("Fixed in %s"% vuln['fixed_in']))
 
           # Display references
-          print "\t",display("References:")
-          for refkey in vuln['references'].keys():
+          print("\t",display("References:"))
+          for refkey in list(vuln['references'].keys()):
             for ref in vuln['references'][refkey]:
               if refkey != 'url':
-                print "\t\t - %s %s" % (refkey.capitalize(), ref)
+                print("\t\t - %s %s" % (refkey.capitalize(), ref))
+              elif refkey == 'cve':
+                cve = "CVE-%s" % ref
+                if cve not in component['CVE']:
+                  component['CVE'].append(cve)
+                print("\t\t - %s" %ref)
               else:
-                print "\t\t - %s" %ref
+                print("\t\t - %s" %ref)
+
+      return component

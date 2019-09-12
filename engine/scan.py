@@ -5,8 +5,8 @@ import re
 import json
 
 from tornado import ioloop, httpclient
-from core import *
-from wordpress import *
+from .core import *
+from .wordpress import *
 from lxml import etree
 from multiprocessing import Process, Pool
 
@@ -30,7 +30,7 @@ class Scan_Engine:
 		match = regex.findall(wordpress.index.text)
 		if match != []:
 			wordpress.version = match[0]
-			print critical("WordPress version %s identified from advanced fingerprinting" % wordpress.version)
+			print(critical("WordPress version %s identified from advanced fingerprinting" % wordpress.version))
 			return True
 		return False
 
@@ -45,7 +45,7 @@ class Scan_Engine:
 		match = regex.findall(r)
 		if match != []:
 			wordpress.version = match[0]
-			print critical("WordPress version %s identified from advanced fingerprinting" % wordpress.version)
+			print(critical("WordPress version %s identified from advanced fingerprinting" % wordpress.version))
 			return True
 		return False
 
@@ -79,7 +79,7 @@ class Scan_Engine:
 					# Detect the version
 					if ddl_hash == root[i][j].get('md5'):
 						wordpress.version =  root[i][j][0].text
-						print critical("WordPress version %s identified from advanced fingerprinting" % wordpress.version)
+						print(critical("WordPress version %s identified from advanced fingerprinting" % wordpress.version))
 						return
 
 
@@ -110,11 +110,14 @@ class Scan_Engine:
 
 		# This version doesn't  exist
 		if wordpress.version not in data:
-			print warning("The version %s isn't in the database - Please try the option --update" % (wordpress.version))
+			print(warning("The version %s isn't in the database - Please try the option --update" % (wordpress.version)))
 			return
 
+		# Store vulnerabilities found
+		wordpress.vulns = data[version]["vulnerabilities"]
+
 		if data[wordpress.version]["vulnerabilities"] == []:
-			versions = data.keys()
+			versions = list(data.keys())
 			for v in versions:
 				if v[:4] in wordpress.version and is_lower(wordpress.version, v, False):
 					version = v
@@ -124,20 +127,20 @@ class Scan_Engine:
 		for vuln in data[version]["vulnerabilities"]:
 
 			# Basic infos
-			print warning("\t%s : %s - ID:%s" % (vuln['vuln_type'], vuln['title'] , vuln['id']) )
-			print info("\tFixed in %s"% vuln['fixed_in'])
+			print(warning("\t%s : %s - ID:%s" % (vuln['vuln_type'], vuln['title'] , vuln['id']) ))
+			print(info("\tFixed in %s"% vuln['fixed_in']))
 
 			# Display references
-			print info("\tReferences:")
-			for refkey in vuln['references'].keys():
+			print(info("\tReferences:"))
+			for refkey in list(vuln['references'].keys()):
 				for ref in vuln['references'][refkey]:
 
 					if refkey != 'url':
-						print "\t\t - %s %s" % (refkey.capitalize(), ref)
+						print("\t\t - %s %s" % (refkey.capitalize(), ref))
 					else:
-						print "\t\t - %s" %ref
+						print("\t\t - %s" %ref)
 
-			print ""
+			print("")
 
 
 	"""
@@ -145,12 +148,13 @@ class Scan_Engine:
 	description : enumerate every theme used by the wordpress
 	"""
 	def enumerating_themes_passive(self, wordpress):
-		print notice("Enumerating themes from passive detection ...")
+		print(notice("Enumerating themes from passive detection ..."))
 
 		# Theme name (css file)
-		regex = re.compile('wp-content/themes/(.*?)/.*?[css|js].*?ver=([0-9\.]*)')
-		match = regex.findall(wordpress.index.text)
-		theme = {}
+		regex   = re.compile('wp-content/themes/(.*?)/.*?[css|js].*?ver=([0-9\.]*)')
+		match   = regex.findall(wordpress.index.text)
+		theme   = {}
+		results = {}
 
 		# Unique theme
 		for m in match:
@@ -161,11 +165,11 @@ class Scan_Engine:
 			theme_name = theme_name.replace('.min','')
 			theme_version = m[1]
 
-			if m[0] not in theme.keys():
+			if m[0] not in list(theme.keys()):
 				theme[m[0]] = m[1]
-				display_vulnerable_component(theme_name, theme_version, "themes")
+				results[theme_name] = display_vulnerable_component(theme_name, theme_version, "themes")
 
-		wordpress.themes = theme
+		wordpress.themes = results
 
 
 	"""
@@ -173,12 +177,13 @@ class Scan_Engine:
 	description : enumerate every plugins used by the wordpress
 	"""
 	def enumerating_plugins_passive(self, wordpress):
-		print notice("Enumerating plugins from passive detection ...")
+		print(notice("Enumerating plugins from passive detection ..."))
 
 		# Plugin name (js file)
-		regex = re.compile('wp-content/plugins/(.*?)/.*?[css|js].*?ver=([0-9\.]*)')
-		match = regex.findall(wordpress.index.text)
-		plugin = {}
+		regex   = re.compile('wp-content/plugins/(.*?)/.*?[css|js].*?ver=([0-9\.]*)')
+		match   = regex.findall(wordpress.index.text)
+		plugin  = {}
+		results = {}
 
 		# Unique plugin
 		for m in match:
@@ -189,11 +194,11 @@ class Scan_Engine:
 			plugin_name = plugin_name.replace('.min','')
 			plugin_version = m[1]
 
-			if plugin_name not in plugin.keys() and m[1]!='1':
+			if plugin_name not in list(plugin.keys()) and m[1]!='1':
 				plugin[plugin_name] = m[1]
-				display_vulnerable_component(plugin_name, plugin_version, "plugins")
+				results[plugin_name] = display_vulnerable_component(plugin_name, plugin_version, "plugins")
 
-		wordpress.plugins = plugin
+		wordpress.plugins = results
 
 
 	"""
@@ -201,7 +206,7 @@ class Scan_Engine:
 	description : enumerate every themes used by the wordpress
 	"""
 	def enumerating_themes_aggressive(self, wordpress):
-		print notice("Enumerating themes from aggressive detection ...")
+		print(notice("Enumerating themes from aggressive detection ..."))
 
 		# Load json file
 		with open('database/themes.json') as data_file:
@@ -211,7 +216,7 @@ class Scan_Engine:
 			global iter_aggressive
 			iter_aggressive = 0
 			http_client = httpclient.AsyncHTTPClient()
-			for plugin in data.keys():
+			for plugin in list(data.keys()):
 				iter_aggressive += 1
 				http_client.fetch(wordpress.url+'/wp-content/themes/' + plugin, aggressive_request_themes, method='HEAD', validate_cert=False) == True
 			ioloop.IOLoop.instance().start()
@@ -222,7 +227,7 @@ class Scan_Engine:
 	description : enumerate every plugins used by the wordpress
 	"""
 	def enumerating_plugins_aggressive(self, wordpress):
-		print notice("Enumerating plugins from aggressive detection ...")
+		print(notice("Enumerating plugins from aggressive detection ..."))
 
 		# Load json file
 		with open('database/plugins.json') as data_file:
@@ -232,7 +237,7 @@ class Scan_Engine:
 			global iter_aggressive
 			iter_aggressive = 0
 			http_client = httpclient.AsyncHTTPClient()
-			for plugin in data.keys():
+			for plugin in list(data.keys()):
 				iter_aggressive += 1
 				http_client.fetch(wordpress.url+'/wp-content/plugins/' + plugin, aggressive_request_plugins, method='HEAD', validate_cert=False) == True
 			ioloop.IOLoop.instance().start()
