@@ -233,11 +233,11 @@ def display_vulnerable_component(name, version, file):
         if 'fixed_in' in list(vuln.keys()) and (vuln['fixed_in'] == None or is_lower(version, vuln['fixed_in'], True)):
 
           # Main informations
-          print("\t",vulnerable("%s : %s - ID:%s" % (vuln['vuln_type'], vuln['title'] , vuln['id']) ))
-          print("\t",display("Fixed in %s"% vuln['fixed_in']))
+          print(vulnerable("\t%s : %s - ID:%s" % (vuln['vuln_type'], vuln['title'] , vuln['id']) ))
+          print(display("\tFixed in %s"% vuln['fixed_in']))
 
           # Display references
-          print("\t",display("References:"))
+          print(display("\tReferences:"))
           for refkey in list(vuln['references'].keys()):
             for ref in vuln['references'][refkey]:
               if refkey != 'url':
